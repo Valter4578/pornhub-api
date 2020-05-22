@@ -2,14 +2,18 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/PuerkitoBio/goquery"
 )
 
+var link = "https://rt.pornhub.com/video/webmasterss"
+
 func main() {
-	res, err := http.Get("https://rt.pornhub.com/video/webmasterss")
+	res, err := http.Get(link)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -18,7 +22,12 @@ func main() {
 		log.Fatal("Status code error: %d %s", res.StatusCode, res.Status)
 	}
 
-	doc, err := goquery.NewDocumentFromReader(res.Body)
+	parse(res.Body)
+
+}
+
+func parse(b io.Reader) {
+	doc, err := goquery.NewDocumentFromReader(b)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -27,17 +36,30 @@ func main() {
 	doc.Find("item").Each(func(i int, s *goquery.Selection) {
 		title := s.Find("title").Text()
 		img := s.Find("thumb").Text()
-		imgLrg := s.Find("thumd_large").Text()
-		video := s.Find("embed").Text()
+		imgLrg := s.Find("thumb_large").Text()
+		videoLink := s.Find("iframe").Text()
 
-		fmt.Println("title ", title)
-		fmt.Println("Image: ", img)
-		fmt.Println("Large image: ", imgLrg)
-		fmt.Println("Video: ", video)
+		title = cropTitle(title)
+
+		// video := Video{
+		// 	title:      title,
+		// 	image:      img,
+		// 	largeImage: imgLrg,
+		// 	videoLink:  videoLink,
+		// }
+
+		// Videos := append(Videos, video)
+
+		logOutput(title, img, imgLrg, videoLink)
 	})
-
 }
 
-func scraper() {
-
+func cropTitle(title string) string {
+	extraExclamation := strings.Index(title, "!")
+	if extraExclamation > -1 {
+		title = title[extraExclamation+1:]
+	}
+	title = strings.ReplaceAll(title, "[CDATA[", "")
+	title = strings.ReplaceAll(title, "]]>", "")
+	return title
 }
